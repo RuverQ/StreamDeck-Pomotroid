@@ -43,7 +43,7 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
 
 
     private onHold(ev: KeyDownEvent<PomotroidTimerSettings>): void {
-        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F4})')"`);
+        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F2})')"`);
     }
 
     private connectWebSocket(ev: WillAppearEvent<PomotroidTimerSettings> | KeyDownEvent<PomotroidTimerSettings>): void {
