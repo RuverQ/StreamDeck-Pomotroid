@@ -1,4 +1,4 @@
-import { action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent } from "@elgato/streamdeck";
+import { action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent } from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { exec } from "child_process";
 
@@ -13,9 +13,37 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.renderTimer(ev.action, ev.payload.settings).catch(console.error);
     }
 
+    private holdTimer?: NodeJS.Timeout;
+    private holdThresholdMs = 600;
+    private holdDetected = false;
     override onKeyDown(ev: KeyDownEvent<PomotroidTimerSettings>): void {
+        this.holdDetected = false;
+        this.holdTimer = setTimeout(() => {
+        this.holdDetected = true;
+        this.onHold(ev);
+        }, this.holdThresholdMs);
         
+    }
+
+    override onKeyUp(ev: KeyUpEvent<PomotroidTimerSettings>): Promise<void> | void {
+        if (this.holdTimer) {
+            clearTimeout(this.holdTimer);
+            this.holdTimer = undefined;
+        }
+
+        if (!this.holdDetected) {
+            // This was a normal tap/click
+            this.onTap(ev);
+        }
+    }
+
+    private onTap(ev: KeyUpEvent<PomotroidTimerSettings>): void {
         exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F1})')"`);
+    }
+
+
+    private onHold(ev: KeyDownEvent<PomotroidTimerSettings>): void {
+        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F4})')"`);
     }
 
     private connectWebSocket(ev: WillAppearEvent<PomotroidTimerSettings> | KeyDownEvent<PomotroidTimerSettings>): void {
