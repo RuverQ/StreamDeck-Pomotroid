@@ -15,12 +15,10 @@
         "@types/ws": "^8.18.1",
         "rollup": "^4.0.2",
         "tslib": "^2.6.2",
-        "robotjs": "^0.7.0",
         "typescript": "^5.2.2"
     },
     "dependencies": {
         "@elgato/streamdeck": "^2.0.0",
-        "ws": "^8.20.0",
-        "robotjs": "^0.7.0"
+        "ws": "^8.20.0"
     }
 }

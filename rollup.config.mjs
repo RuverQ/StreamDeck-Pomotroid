@@ -20,7 +20,6 @@ const config = {
 			return url.pathToFileURL(path.resolve(path.dirname(sourcemapPath), relativeSourcePath)).href;
 		}
 	},
-	external: ['robotjs'],
 	plugins: [
 		{
 			name: "watch-externals",
