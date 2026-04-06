@@ -1,0 +1,63 @@
+{
+	"Name": "pomotroid",
+	"Version": "0.1.0.0",
+	"Author": "RuverQ",
+	"Actions": [
+		{
+			"Name": "Counter",
+			"UUID": "com.ruverq.pomotroid.increment",
+			"Icon": "imgs/actions/counter/icon",
+			"Tooltip": "Displays a count, which increments by one on press.",
+			"PropertyInspectorPath": "ui/increment-counter.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/counter/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Timer",
+			"UUID": "com.ruverq.pomotroid.timer",
+			"Icon": "imgs/actions/counter/icon",
+			"Tooltip": "Shows a timer in pomotroid",
+			"PropertyInspectorPath": "ui/timer-settings.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/counter/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "pomotroid",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Integration With the Pomotroid APP",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "6.9"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.ruverq.pomotroid"
+}
