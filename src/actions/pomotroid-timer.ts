@@ -1,4 +1,4 @@
-import { action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent } from "@elgato/streamdeck";
+import { action, Action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent, PropertyInspectorDidAppearEvent} from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { exec } from "child_process";
 
@@ -8,10 +8,46 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
     private ws?: WebSocket;
     private updateInterval?: NodeJS.Timeout;
 
+    private websocketConnectInterval?: NodeJS.Timeout;
+    private isConnected = false;
+    private currentSettings?: PomotroidTimerSettings;
+
     override onWillAppear(ev: WillAppearEvent<PomotroidTimerSettings>): void {
-        this.connectWebSocket(ev);
+        this.currentSettings = ev.payload.settings;
+
+        streamDeck.logger.info("Trying to connect to ws://127.0.0.1:" + this.currentSettings + "/ws")
+        this.sendStatus('connecting', 'Connecting...');
+        this.connectWebSocket(ev)
+        
+
+        this.websocketConnectInterval = setInterval(() => {
+            
+            if(this.ws?.readyState !== WebSocket.OPEN){
+                streamDeck.logger.info("Trying to connect to ws://127.0.0.1:" + this.currentSettings + "/ws")
+                this.connectWebSocket(ev)
+                setTimeout(() => {
+                    if(this.ws?.readyState !== WebSocket.OPEN) 
+                    this.sendStatus('connecting', 'Connecting...');
+                }, 100)
+            }
+
+        }, 500)
+
+
         this.renderTimer(ev.action, ev.payload.settings).catch(console.error);
     }
+
+    override onPropertyInspectorDidAppear(ev: PropertyInspectorDidAppearEvent<PomotroidTimerSettings>): Promise<void> | void {
+        if(this.isConnected) this.sendStatus('connected', 'Connected')
+        else this.sendStatus('disconnected', 'Disconnected');
+    }
+
+    override onDidReceiveSettings(ev: DidReceiveSettingsEvent<PomotroidTimerSettings>): void {
+
+        this.currentSettings = ev.payload.settings; // always up to date
+    }
+
+    
 
     private holdTimer?: NodeJS.Timeout;
     private holdThresholdMs = 600;
@@ -46,20 +82,35 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F2})')"`);
     }
 
-    private connectWebSocket(ev: WillAppearEvent<PomotroidTimerSettings> | KeyDownEvent<PomotroidTimerSettings>): void {
+    private sendStatus(state: string, label: string): void {
+        // Sends to the property inspector if it's currently open
+        streamDeck.ui.sendToPropertyInspector({ wsStatus: { state, label } });
+    }
+
+    private connectWebSocket(ev: WillAppearEvent<PomotroidTimerSettings>): void {
 
         this.ws?.close();
 
         const { settings } = ev.payload;
 
-        this.ws = new WebSocket("ws://127.0.0.1:" + settings.pomotroidWebSocketPort + "/ws");
+        const port = this.currentSettings?.pomotroidWebSocketPort ?? 1314;
+        this.ws = new WebSocket("ws://127.0.0.1:" + port + "/ws");
         this.ws.onopen = () => {
-            console.log("Connected To Pomotroid");
+            streamDeck.logger.info("Connected To Pomotroid");
+            settings.isConnected = true;
+            this.isConnected = true;
+            this.sendStatus('connected', 'Connected!');
         
         this.ws?.send(JSON.stringify({ type: "getState" }), err => {
             if (err) console.error("send failed", err);
             else console.log("getState sent");
-        });
+        });}
+
+        this.ws.onclose = () => {
+            streamDeck.logger.info("Websocket closed")
+            this.sendStatus('disconnected', 'Disconnected');
+            settings.isConnected = false;
+            this.isConnected = false;
         }
 
         this.ws.onmessage = async (event) => {
@@ -80,6 +131,7 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                     break;
                 case "resumed":
                     settings.isPaused = false;
+                    settings.isRunning = true;
                     settings.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
                     await ev.action.setSettings(settings);
                     await this.renderTimer(ev.action, settings);
@@ -99,7 +151,9 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                 case "started":
                     settings.totalSecs = parseInt(data.payload.total_secs, 10);
                     settings.elapsedSecs = 0;
-                    console.log("???")
+                    settings.isRunning = true;
+                    settings.isPaused = false;
+                    settings.round_type = "work";
                     await ev.action.setSettings(settings);
                     await this.renderTimer(ev.action, settings);
                     this.startTimer(ev);
@@ -107,6 +161,8 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                 case "reset":
                     settings.round_type = "work";
                     settings.elapsedSecs = 0;
+                    settings.isPaused = false;
+                    settings.isRunning = false;
                     await ev.action.setSettings(settings);
                     this.clearTimer();
                     await this.renderTimer(ev.action, settings);
@@ -119,6 +175,9 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
 
         this.ws.onerror = (error) => {
             console.error("WebSocket error:", error);
+            this.sendStatus('error', 'Error ' + error.message.toString());
+            settings.isConnected = false;
+            this.isConnected = false;
         };
     }
 
@@ -254,11 +313,13 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.ws?.close();
     }
 
+
 }
 
 type PomotroidTimerSettings = {
     pomotroidWebSocketPort?: string;
     elapsedSecs?: number;
+    isConnected?: boolean;
     round_type?: string;
     totalSecs?: number;
     isRunning?: boolean;

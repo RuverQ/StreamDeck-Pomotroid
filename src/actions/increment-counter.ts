@@ -8,6 +8,9 @@ export class IncrementCounter extends SingletonAction<CounterSettings> {
 
 
 	override onWillAppear(ev: WillAppearEvent<CounterSettings>): void | Promise<void> {
+
+
+		
 		return ev.action.setTitle(`${ev.payload.settings.count ?? 0}`);
 	}
 
@@ -20,7 +23,7 @@ export class IncrementCounter extends SingletonAction<CounterSettings> {
 		settings.count ??= 2;
 		settings.count ? 0 : settings.count = 1;
 		settings.count *= 2;
-		if(settings.count > 256)
+		if(settings.count > 22)
 			settings.count = 0;
 
 		await ev.action.setSettings(settings);

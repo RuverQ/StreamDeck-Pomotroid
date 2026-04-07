@@ -2,6 +2,7 @@
 <html>
 
 <head lang="en">
+    <link rel="stylesheet" href="timer-settings.css">
     <title>Timer Settings</title>
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
@@ -12,8 +13,45 @@
         Learn more about property inspector components at https://sdpi-components.dev/docs/components
     -->
     <sdpi-item label="Websocket Port">
-        <sdpi-textfield setting="pomotroidWebSocketPort" pattern="/^\d+$/" default="1314" placeholder="Port to the Websocket in Pomotroid App" required></sdpi-textfield>
+        <sdpi-textfield 
+            setting="pomotroidWebSocketPort" 
+            pattern="/^\d+$/" 
+            default="1314" 
+            placeholder="Port to the Websocket in Pomotroid App" 
+            required>
+        </sdpi-textfield>
+        <div id="ws-status" class="ws-status ws-status--disconnected">
+            <span class="ws-status__dot"></span>
+            <span class="ws-status__text">Loading...</span>
+        </div>
     </sdpi-item>
+    <script>
+        const { streamDeckClient } = SDPIComponents;
+
+        
+        // Listen for messages sent from the plugin backend
+        streamDeckClient
+            .getGlobalSettings()
+            .then((settings) => {
+                console.log(settings);
+            });
+
+        streamDeckClient.sendToPropertyInspector.subscribe((data) => {
+            const payload = data.payload;
+            if (payload?.wsStatus) {
+                setWsStatus(payload.wsStatus.state, payload.wsStatus.label);
+            }
+        });
+
+        function setWsStatus(state, label) {
+            const el = document.getElementById('ws-status');
+            el.className = `ws-status ws-status--${state}`;
+            el.querySelector('.ws-status__text').textContent = label;
+        }
+    </script>
+
+
+
 </body>
 
 </html>

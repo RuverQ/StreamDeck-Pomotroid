@@ -1,0 +1,21 @@
+.ws-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 11px;
+}
+.ws-status__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.ws-status--connected    .ws-status__dot  { background-color: #4caf50; }
+.ws-status--connected    .ws-status__text { color: #4caf50; }
+.ws-status--disconnected .ws-status__dot  { background-color: #9e9e9e; }
+.ws-status--disconnected .ws-status__text { color: #9e9e9e; }
+.ws-status--connecting   .ws-status__dot  { background-color: #ff9800; }
+.ws-status--connecting   .ws-status__text { color: #ff9800; }
+.ws-status--error        .ws-status__dot  { background-color: #f44336; }
+.ws-status--error        .ws-status__text { color: #f44336; }
