@@ -27,14 +27,7 @@
     </sdpi-item>
     <script>
         const { streamDeckClient } = SDPIComponents;
-
-        
         // Listen for messages sent from the plugin backend
-        streamDeckClient
-            .getGlobalSettings()
-            .then((settings) => {
-                console.log(settings);
-            });
 
         streamDeckClient.sendToPropertyInspector.subscribe((data) => {
             const payload = data.payload;

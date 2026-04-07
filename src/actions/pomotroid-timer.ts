@@ -12,6 +12,10 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
     private isConnected = false;
     private currentSettings?: PomotroidTimerSettings;
 
+    private elapsedSecs?: number;
+    private round_type?: string;
+    private totalSecs?: number;
+
     override onWillAppear(ev: WillAppearEvent<PomotroidTimerSettings>): void {
         this.currentSettings = ev.payload.settings;
 
@@ -97,7 +101,6 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.ws = new WebSocket("ws://127.0.0.1:" + port + "/ws");
         this.ws.onopen = () => {
             streamDeck.logger.info("Connected To Pomotroid");
-            settings.isConnected = true;
             this.isConnected = true;
             this.sendStatus('connected', 'Connected!');
         
@@ -109,7 +112,6 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.ws.onclose = () => {
             streamDeck.logger.info("Websocket closed")
             this.sendStatus('disconnected', 'Disconnected');
-            settings.isConnected = false;
             this.isConnected = false;
         }
 
@@ -122,7 +124,7 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
 
             switch (data.type) {
                 case "paused":
-                    settings.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
+                    this.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
                     settings.isPaused = true;
                     settings.isRunning = false;
                     await ev.action.setSettings(settings);
@@ -132,16 +134,18 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                 case "resumed":
                     settings.isPaused = false;
                     settings.isRunning = true;
-                    settings.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
+                    this.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
                     await ev.action.setSettings(settings);
                     await this.renderTimer(ev.action, settings);
                     this.startTimer(ev);
                     break;
                 case "roundChange":
-                    settings.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
-                    settings.totalSecs = parseInt(data.payload.total_secs, 10);
+                    this.clearTimer();
+                    this.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
+                    this.totalSecs = parseInt(data.payload.total_secs, 10);
                     settings.isRunning = data.payload.is_running;
-                    settings.round_type = data.payload.round_type;
+                    this.round_type = data.payload.round_type;
+                    console.log(this.round_type)
                     await ev.action.setSettings(settings);
                     await this.renderTimer(ev.action, settings);
                     if (settings.isRunning) {
@@ -149,18 +153,17 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                     }
                     break;
                 case "started":
-                    settings.totalSecs = parseInt(data.payload.total_secs, 10);
-                    settings.elapsedSecs = 0;
+                    this.totalSecs = parseInt(data.payload.total_secs, 10);
+                    this.elapsedSecs = 0;
                     settings.isRunning = true;
                     settings.isPaused = false;
-                    settings.round_type = "work";
                     await ev.action.setSettings(settings);
                     await this.renderTimer(ev.action, settings);
                     this.startTimer(ev);
                     break;
                 case "reset":
-                    settings.round_type = "work";
-                    settings.elapsedSecs = 0;
+                    this.round_type = "work";
+                    this.elapsedSecs = 0;
                     settings.isPaused = false;
                     settings.isRunning = false;
                     await ev.action.setSettings(settings);
@@ -176,7 +179,6 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.ws.onerror = (error) => {
             console.error("WebSocket error:", error);
             this.sendStatus('error', 'Error ' + error.message.toString());
-            settings.isConnected = false;
             this.isConnected = false;
         };
     }
@@ -189,13 +191,13 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
             return;
         }
 
-        settings.elapsedSecs = settings.elapsedSecs ?? 0;
-        settings.totalSecs = settings.totalSecs ?? 0;
+        this.elapsedSecs = this.elapsedSecs ?? 0;
+        this.totalSecs = this.totalSecs ?? 0;
         this.renderTimer(ev.action, settings).catch(console.error);
 
         this.updateInterval = setInterval(async () => {
-            settings.elapsedSecs = (settings.elapsedSecs ?? 0) + 1;
-            settings.totalSecs = settings.totalSecs ?? 0;
+            this.elapsedSecs = (this.elapsedSecs ?? 0) + 1;
+            this.totalSecs = this.totalSecs ?? 0;
             await ev.action.setSettings(settings);
             await this.renderTimer(ev.action, settings);
         }, 1000); // 1000ms = 1 second    
@@ -203,8 +205,8 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
     }
 
     private async renderTimer(action: { setImage(image?: string): Promise<void>; setTitle(title?: string): Promise<void>; }, settings: PomotroidTimerSettings): Promise<void> {
-        const totalSecs = settings.totalSecs ?? 0;
-        const elapsedSecs = Math.min(settings.elapsedSecs ?? 0, totalSecs);
+        const totalSecs = this.totalSecs ?? 0;
+        const elapsedSecs = Math.min(this.elapsedSecs ?? 0, totalSecs);
         const remaining = Math.max(0, totalSecs - elapsedSecs);
         const remainingFraction = totalSecs > 0 ? Math.max(0, Math.min(1, remaining / totalSecs)) : 0;
         const minutes = Math.floor(remaining / 60);
@@ -258,7 +260,7 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
             };
         }
 
-        switch (settings.round_type?.toLowerCase()) {
+        switch (this.round_type?.toLowerCase()) {
             case "work":
                 return {
                     background: "#10151D",
@@ -288,11 +290,11 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
                 };
             default:
                 return {
-                    background: "#11131A",
-                    track: "#374151",
-                    progress: "#F59E0B",
+                    background: "#10151D",
+                    track: "#3F2B2B",
+                    progress: "#EA6B5E",
                     inner: "#11131A",
-                    center: "#111827",
+                    center: "#141A24",
                     icon: "#F8FAFC",
                 };
         }
@@ -318,10 +320,6 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
 
 type PomotroidTimerSettings = {
     pomotroidWebSocketPort?: string;
-    elapsedSecs?: number;
-    isConnected?: boolean;
-    round_type?: string;
-    totalSecs?: number;
     isRunning?: boolean;
     isPaused?: boolean;
 }
