@@ -181,13 +181,24 @@ override onSendToPlugin(ev: SendToPluginEvent<JsonValue, PomotroidTimerSettings>
         }
 
         this.ws.onmessage = async (event) => {
-            console.log("bruha")
+            console.log("bruhaф")
             
             const data = JSON.parse(event.data.toString());
             console.log("got" + event.data)
             console.log("type" + data.type)
 
             switch (data.type) {
+                case "state":
+                    this.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
+                    settings.isPaused = data.payload.is_paused;
+                    settings.isRunning = data.payload.is_running;
+                    this.round_type = data.payload.round_type;
+                    this.totalSecs = data.payload.total_secs;
+                    await ev.action.setSettings(settings);
+                    await this.renderTimer(ev.action, settings);
+                    if(data.payload.is_running) this.startTimer(ev);
+                    else this.clearTimer();
+                    break;
                 case "paused":
                     this.elapsedSecs = parseInt(data.payload.elapsed_secs, 10);
                     settings.isPaused = true;
@@ -227,13 +238,10 @@ override onSendToPlugin(ev: SendToPluginEvent<JsonValue, PomotroidTimerSettings>
                     this.startTimer(ev);
                     break;
                 case "reset":
-                    this.round_type = "work";
-                    this.elapsedSecs = 0;
-                    settings.isPaused = false;
-                    settings.isRunning = false;
-                    await ev.action.setSettings(settings);
-                    this.clearTimer();
-                    await this.renderTimer(ev.action, settings);
+                    this.ws?.send(JSON.stringify({ type: "getState" }), err => {
+                        if (err) console.error("send failed", err);
+                        else console.log("getState sent");
+                    });
                     break;
 
             }
