@@ -6,12 +6,31 @@
     <title>Timer Settings</title>
     <meta charset="utf-8" />
     <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+    <style>
+        .hint {
+            font-size: 0.75em;
+            color: #888;
+            margin: 0 0 6px 0;
+            line-height: 1.4;
+        }
+        .hint code {
+            font-family: monospace;
+            background: rgba(255,255,255,0.08);
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+        .section-hint {
+            margin-top: 12px;
+        }
+    </style>
 </head>
 
 <body>
-    <!--
-        Learn more about property inspector components at https://sdpi-components.dev/docs/components
-    -->
+    <p class="hint">
+        For the plugin to work, you need to enable the WebSocket server in Pomotroid:<br>
+        <code>Settings → System → WebSocket Server</code><br>
+        If you're using a non-default port, update it below.
+    </p>
     <sdpi-item label="Websocket Port">
         <sdpi-textfield 
             setting="pomotroidWebSocketPort" 
@@ -43,7 +62,39 @@
         }
     </script>
 
-
+    <p class="hint section-hint">
+        Global shortcuts also need to be enabled in Pomotroid:<br>
+        <code>Settings → Shortcuts → Enable Global Shortcuts</code><br>
+        If you want to use different shortcuts, set them below — just make sure they exactly match what's configured in Pomotroid.
+    </p>
+    <sdpi-item label="Toggle Timer Keybind">
+        <sdpi-textfield
+            setting="Keybind1"
+            placeholder="e.g. Ctrl+F1"
+            value="Ctrl+F1">
+        </sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Reset Timer Keybind">
+        <sdpi-textfield
+            setting="Keybind2"
+            placeholder="e.g. Ctrl+F2"
+            value="Ctrl+F2">
+        </sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Skip Round Keybind">
+        <sdpi-textfield
+            setting="Keybind3"
+            placeholder="e.g. Ctrl+F3"
+            value="Ctrl+F3">
+        </sdpi-textfield>
+    </sdpi-item>
+    <sdpi-item label="Restart Round Keybind">
+        <sdpi-textfield
+            setting="Keybind4"
+            placeholder="e.g. Ctrl+F4"
+            value="Ctrl+F4">
+        </sdpi-textfield>
+    </sdpi-item>
 
 </body>
 

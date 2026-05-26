@@ -1,6 +1,7 @@
-import { action, Action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent, PropertyInspectorDidAppearEvent} from "@elgato/streamdeck";
+import { action, Action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent, PropertyInspectorDidAppearEvent, SendToPluginEvent} from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { exec } from "child_process";
+import { JsonValue } from "@elgato/utils";
 
 @action({ UUID: "com.ruverq.pomotroid.timer" })
 export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
@@ -51,7 +52,16 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         this.currentSettings = ev.payload.settings; // always up to date
     }
 
-    
+override onSendToPlugin(ev: SendToPluginEvent<JsonValue, PomotroidTimerSettings>): Promise<void> | void {
+    const payload = ev.payload as { event: string; id?: string; combo?: string };
+
+    if (payload.event === 'SetKeybind' && payload.id && payload.combo) {
+        const settings = this.currentSettings ?? {};
+        (settings as Record<string, string>)[payload.id] = payload.combo;
+        this.currentSettings = settings as PomotroidTimerSettings;
+        ev.action.setSettings(settings);
+    }
+}
 
     private holdTimer?: NodeJS.Timeout;
     private holdThresholdMs = 600;
@@ -72,22 +82,60 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
         }
 
         if (!this.holdDetected) {
-            // This was a normal tap/click
             this.onTap(ev);
         }
     }
 
-    private onTap(ev: KeyUpEvent<PomotroidTimerSettings>): void {
-        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F1})')"`);
+    private sendKeybind(combo: string): void {
+        
+        const keyMap: Record<string, string> = {
+            'Ctrl': '^', 'Shift': '+', 'Alt': '%',
+        };
+        const specialKeys = new Set([
+            'F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12',
+            'Enter','Tab','Escape','Backspace','Delete','Insert',
+            'Home','End','PageUp','PageDown',
+            'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+            'Space',
+        ]);
+        const specialMap: Record<string, string> = {
+            'ArrowUp': 'UP', 'ArrowDown': 'DOWN',
+            'ArrowLeft': 'LEFT', 'ArrowRight': 'RIGHT',
+            'Escape': 'ESC', 'Delete': 'DEL', 'Backspace': 'BS',
+            'Space': 'SPACE',
+        };
+
+        const parts = combo.split('+');
+        let modifiers = '';
+        let mainKey = '';
+
+        for (const part of parts) {
+            if (part in keyMap) {
+                modifiers += keyMap[part];
+            } else {
+                const mapped = specialMap[part] ?? part;
+                mainKey = specialKeys.has(part) ? `{${mapped}}` : mapped;
+            }
+        }
+
+        const sendKeys = (mainKey.startsWith('{') && modifiers)
+            ? `${modifiers}(${mainKey})`
+            : modifiers + mainKey;
+            
+        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('${sendKeys}')"`);
     }
 
+    private onTap(ev: KeyUpEvent<PomotroidTimerSettings>): void {
+        const combo = this.currentSettings?.Keybind1 ?? 'Ctrl+F1';
+        this.sendKeybind(combo);
+    }
 
     private onHold(ev: KeyDownEvent<PomotroidTimerSettings>): void {
-        exec(`powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys('^({F2})')"`);
+        const combo = this.currentSettings?.Keybind2 ?? 'Ctrl+F2';
+        this.sendKeybind(combo);
     }
 
     private sendStatus(state: string, label: string): void {
-        // Sends to the property inspector if it's currently open
         streamDeck.ui.sendToPropertyInspector({ wsStatus: { state, label } });
     }
 
@@ -322,6 +370,11 @@ type PomotroidTimerSettings = {
     pomotroidWebSocketPort?: string;
     isRunning?: boolean;
     isPaused?: boolean;
+
+    Keybind1?: string;
+    Keybind2?: string;
+    Keybind3?: string;
+    Keybind4?: string;
 }
 
     
