@@ -181,7 +181,7 @@ override onSendToPlugin(ev: SendToPluginEvent<JsonValue, PomotroidTimerSettings>
         }
 
         this.ws.onmessage = async (event) => {
-            console.log("bruh")
+            console.log("bruha")
             
             const data = JSON.parse(event.data.toString());
             console.log("got" + event.data)
