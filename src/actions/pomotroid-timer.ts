@@ -1,4 +1,4 @@
-import { action, Action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent, PropertyInspectorDidAppearEvent, SendToPluginEvent} from "@elgato/streamdeck";
+import { action, Action, DidReceiveSettingsEvent, SingletonAction, WillAppearEvent, streamDeck, KeyDownEvent, KeyUpEvent, PropertyInspectorDidAppearEvent, SendToPluginEvent, ApplicationDidLaunchEvent, ApplicationDidTerminateEvent } from "@elgato/streamdeck";
 import WebSocket from "ws";
 import { exec } from "child_process";
 import { JsonValue } from "@elgato/utils";
@@ -17,25 +17,42 @@ export class PomotroidTimer extends SingletonAction<PomotroidTimerSettings> {
     private round_type?: string;
     private totalSecs?: number;
 
+    private isAppRunning?: boolean;
+
     override onWillAppear(ev: WillAppearEvent<PomotroidTimerSettings>): void {
+
+        streamDeck.system.onApplicationDidLaunch((ev: ApplicationDidLaunchEvent) => {
+            if(ev.application != "pomotroid.exe") return;
+            this.isAppRunning = true;            
+        });
+
+        streamDeck.system.onApplicationDidTerminate((ev: ApplicationDidTerminateEvent) => {
+            if(ev.application != "pomotroid.exe") return;
+            this.isAppRunning = false;
+        });
+        
+
         this.currentSettings = ev.payload.settings;
 
         streamDeck.logger.info("Trying to connect to ws://127.0.0.1:" + this.currentSettings + "/ws")
         this.sendStatus('connecting', 'Connecting...');
         this.connectWebSocket(ev)
-        
 
         this.websocketConnectInterval = setInterval(() => {
             
+            if(!this.isAppRunning){
+                this.sendStatus('error', 'Pomotroid is not opened');
+                return;
+            }
+
             if(this.ws?.readyState !== WebSocket.OPEN){
                 streamDeck.logger.info("Trying to connect to ws://127.0.0.1:" + this.currentSettings + "/ws")
                 this.connectWebSocket(ev)
                 setTimeout(() => {
                     if(this.ws?.readyState !== WebSocket.OPEN) 
-                    this.sendStatus('connecting', 'Connecting...');
+                        this.sendStatus('connecting', 'Connecting...');
                 }, 100)
             }
-
         }, 500)
 
 

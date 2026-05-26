@@ -59,5 +59,9 @@
 		"Version": "20",
 		"Debug": "enabled"
 	},
+    "ApplicationsToMonitor": {
+        "mac": ["com.splode.pomotroid"],
+        "windows": ["pomotroid.exe"]
+    },
 	"UUID": "com.ruverq.pomotroid"
 }
